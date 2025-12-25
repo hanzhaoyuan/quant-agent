@@ -296,9 +296,282 @@ CREATE TABLE tasks (
 - 本地缓存机制（SQLite 或 Parquet 文件）
 - 增量更新策略
 
-## 打包与分发
+## 打包成独立安装包（不污染用户环境）
 
-详见 [installer/README.md](installer/README.md)
+### 为什么需要独立打包？
+
+**传统 Python 应用的问题**:
+- 用户需要安装 Python 环境
+- 需要手动安装依赖包 (pip install)
+- 可能与用户系统中其他 Python 应用产生依赖冲突
+- 安装过程复杂，对非技术用户不友好
+
+**独立安装包的优势**:
+- ✅ **零依赖**: 用户无需安装 Python 或任何第三方库
+- ✅ **环境隔离**: 所有依赖打包在一起，完全不污染用户系统
+- ✅ **一键安装**: 双击安装程序即可完成安装
+- ✅ **专业体验**: 与传统 Windows 软件一样的安装流程
+- ✅ **易于分发**: 单个 .exe 安装包即可分发
+
+### 打包方案概述
+
+我们使用以下工具链实现完全独立的安装包：
+
+1. **PyInstaller**: 将 Python 应用及所有依赖打包成单个可执行文件
+2. **Inno Setup**: 制作专业的 Windows 安装程序
+
+**关键特性**:
+- 所有 Python 解释器、依赖库都打包进可执行文件
+- 用户电脑上不需要安装 Python
+- 用户电脑上不需要安装任何 pip 包
+- 完全独立运行，不依赖外部环境
+
+### 详细打包步骤
+
+#### 步骤 1: 准备打包环境
+
+```bash
+# 安装打包工具
+pip install pyinstaller
+
+# 确保项目依赖已安装
+cd quant-agent
+pip install -e .
+```
+
+#### 步骤 2: 使用 PyInstaller 打包
+
+创建打包脚本 `build.py`:
+
+```python
+# quant-agent/build.py
+"""
+打包 quant-agent 为独立可执行文件
+
+运行方式: python build.py
+输出: dist/quant-agent.exe (完全独立，不依赖任何外部 Python 环境)
+"""
+import PyInstaller.__main__
+import os
+import shutil
+
+# 清理旧的构建文件
+if os.path.exists('build'):
+    shutil.rmtree('build')
+if os.path.exists('dist'):
+    shutil.rmtree('dist')
+
+# 打包参数
+PyInstaller.__main__.run([
+    'agent/main.py',                    # 入口文件
+
+    # 基本设置
+    '--name=quant-agent',               # 可执行文件名
+    '--onefile',                        # 打包成单个文件
+    '--console',                        # 显示控制台（方便看日志）
+
+    # 包含的数据和模块
+    '--hidden-import=uvicorn.logging',
+    '--hidden-import=uvicorn.loops',
+    '--hidden-import=uvicorn.loops.auto',
+    '--hidden-import=uvicorn.protocols',
+    '--hidden-import=uvicorn.protocols.http',
+    '--hidden-import=uvicorn.protocols.http.auto',
+    '--hidden-import=uvicorn.protocols.http.h11_impl',
+    '--hidden-import=uvicorn.protocols.websockets',
+    '--hidden-import=uvicorn.protocols.websockets.auto',
+    '--hidden-import=uvicorn.lifespan',
+    '--hidden-import=uvicorn.lifespan.on',
+
+    # 图标（可选，未来添加）
+    # '--icon=installer/icon.ico',
+
+    # 清理
+    '--clean',
+])
+
+print("=" * 60)
+print("打包完成!")
+print("生成的可执行文件: dist/quant-agent.exe")
+print("=" * 60)
+print("重要提示:")
+print("- 这是一个完全独立的可执行文件")
+print("- 不需要用户安装 Python")
+print("- 不需要用户安装任何依赖库")
+print("- 可以直接在任何 Windows 系统上运行")
+print("=" * 60)
+```
+
+运行打包：
+
+```bash
+python build.py
+```
+
+**打包后的文件**:
+- `dist/quant-agent.exe` (约 40-60 MB，包含 Python 解释器 + 所有依赖)
+
+**测试独立可执行文件**:
+```bash
+# 直接运行（不需要 Python 环境）
+dist/quant-agent.exe
+
+# 在另一台没有 Python 的电脑上也能运行
+```
+
+#### 步骤 3: 制作安装程序 (Inno Setup)
+
+下载并安装 [Inno Setup](https://jrsoftware.org/isdl.php)
+
+创建安装脚本 `installer/setup.iss`:
+
+```iss
+; Inno Setup 安装脚本
+; 用途: 将 quant-agent.exe 打包成专业的安装程序
+
+[Setup]
+; 应用信息
+AppName=Quant Agent
+AppVersion=0.1.0
+AppPublisher=Your Company
+AppPublisherURL=https://your-company.com
+DefaultDirName={autopf}\QuantAgent
+DefaultGroupName=Quant Agent
+OutputDir=installer\output
+OutputBaseFilename=QuantAgentSetup-0.1.0
+Compression=lzma2/max
+SolidCompression=yes
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
+
+; 安装向导设置
+WizardStyle=modern
+SetupIconFile=installer\icon.ico
+UninstallDisplayIcon={app}\quant-agent.exe
+
+[Files]
+; 复制独立的可执行文件到安装目录
+Source: "dist\quant-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
+
+[Icons]
+; 开始菜单快捷方式
+Name: "{group}\Quant Agent"; Filename: "{app}\quant-agent.exe"
+Name: "{group}\卸载 Quant Agent"; Filename: "{uninstallexe}"
+
+; 桌面快捷方式（可选）
+Name: "{autodesktop}\Quant Agent"; Filename: "{app}\quant-agent.exe"; Tasks: desktopicon
+
+[Tasks]
+Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加选项:"
+
+[Registry]
+; 注册自定义协议 quant-agent://
+Root: HKCR; Subkey: "quant-agent"; ValueType: string; ValueName: ""; ValueData: "URL:Quant Agent Protocol"; Flags: uninsdeletekey
+Root: HKCR; Subkey: "quant-agent"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKCR; Subkey: "quant-agent\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\quant-agent.exe,0"
+Root: HKCR; Subkey: "quant-agent\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\quant-agent.exe"" ""%1"""
+
+[Run]
+; 安装完成后可选择立即运行
+Filename: "{app}\quant-agent.exe"; Description: "立即启动 Quant Agent"; Flags: nowait postinstall skipifsilent
+
+[Code]
+// 检查是否已有实例在运行
+function InitializeSetup(): Boolean;
+begin
+  Result := True;
+end;
+```
+
+使用 Inno Setup 编译：
+
+1. 打开 Inno Setup Compiler
+2. 打开 `installer/setup.iss`
+3. 点击 "Build" -> "Compile"
+4. 生成 `installer/output/QuantAgentSetup-0.1.0.exe`
+
+**最终安装包特性**:
+- 大小: 约 45-65 MB（包含所有内容）
+- 用户体验: 双击安装，下一步下一步即可
+- 自动注册自定义协议 `quant-agent://`
+- 创建开始菜单快捷方式
+- 可选创建桌面快捷方式
+- 完整的卸载功能
+
+### 环境隔离说明
+
+**打包后的应用如何做到环境隔离？**
+
+1. **内嵌 Python 解释器**
+   - PyInstaller 将 Python 3.10+ 解释器完整打包进 .exe
+   - 用户无需安装 Python
+
+2. **内嵌所有依赖库**
+   - FastAPI, uvicorn, pydantic 等所有依赖都打包在内
+   - 用户无需运行 `pip install`
+
+3. **独立运行时环境**
+   - 可执行文件运行时，从自己的内存空间加载所有模块
+   - 完全不访问系统的 Python 环境（即使用户安装了 Python）
+
+4. **不修改系统环境变量**
+   - 不修改 PATH
+   - 不创建全局 Python 环境
+   - 除了注册表中的自定义协议，不修改任何系统配置
+
+5. **卸载完全清理**
+   - 卸载时删除所有安装文件
+   - 删除注册表中的自定义协议
+   - 不留任何残留
+
+### 与用户现有环境的关系
+
+| 场景 | 影响 |
+|------|------|
+| 用户已安装 Python | 完全独立，互不影响 |
+| 用户已安装其他 Python 应用 | 完全独立，互不影响 |
+| 用户系统中有不同版本的 FastAPI | 完全独立，互不影响 |
+| 多个版本的 quant-agent 同时安装 | 不建议，但技术上可以安装到不同目录 |
+
+### 完整打包工作流
+
+```bash
+# 1. 准备环境
+cd quant-agent
+pip install pyinstaller
+
+# 2. 打包可执行文件
+python build.py
+
+# 3. 测试可执行文件
+dist/quant-agent.exe
+
+# 4. 使用 Inno Setup 制作安装程序
+# (在 Inno Setup Compiler 中打开 installer/setup.iss 并编译)
+
+# 5. 测试安装程序
+installer/output/QuantAgentSetup-0.1.0.exe
+```
+
+### 分发安装包
+
+**分发渠道**:
+1. 公司官网下载页面
+2. GitHub Releases
+3. 内部文件服务器
+
+**建议**:
+- 为安装包添加数字签名（避免 Windows SmartScreen 警告）
+- 提供 SHA256 校验和
+- 提供详细的安装说明文档
+
+**用户安装步骤**:
+1. 下载 `QuantAgentSetup-0.1.0.exe`
+2. 双击运行
+3. 点击"下一步"完成安装
+4. 无需任何额外配置
+
+详细的技术细节和示例代码请参考 [installer/README.md](installer/README.md)
 
 ## 安全注意事项
 
