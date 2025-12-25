@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试 quant-agent:// 协议</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .test-item {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+        .test-item h3 {
+            margin-top: 0;
+            color: #2196F3;
+        }
+        button {
+            padding: 12px 24px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        button.secondary {
+            background: #757575;
+        }
+        button.secondary:hover {
+            background: #616161;
+        }
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .status.success {
+            background: #E8F5E9;
+            color: #2E7D32;
+            border: 1px solid #A5D6A7;
+        }
+        .status.error {
+            background: #FFEBEE;
+            color: #C62828;
+            border: 1px solid #EF9A9A;
+        }
+        .status.info {
+            background: #E3F2FD;
+            color: #1565C0;
+            border: 1px solid #90CAF9;
+        }
+        .status.warning {
+            background: #FFF3E0;
+            color: #E65100;
+            border: 1px solid #FFCC80;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .log {
+            margin-top: 10px;
+            padding: 10px;
+            background: #263238;
+            color: #CFD8DC;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log div {
+            margin: 5px 0;
+        }
+        .timestamp {
+            color: #90A4AE;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Quant Agent 协议测试工具</h1>
+        <p>此工具用于测试 <code>quant-agent://</code> 协议是否正确注册和工作。</p>
+
+        <!-- 测试1: 直接唤起 -->
+        <div class="test-item">
+            <h3>测试 1: 直接唤起 Agent</h3>
+            <p>点击按钮尝试通过协议唤起 Quant Agent</p>
+            <button onclick="testProtocol()">🚀 唤起 Agent</button>
+            <div id="result1"></div>
+        </div>
+
+        <!-- 测试2: 检查健康状态 -->
+        <div class="test-item">
+            <h3>测试 2: 检查 Agent 健康状态</h3>
+            <p>检查 Agent 是否在 <code>http://127.0.0.1:17633</code> 运行</p>
+            <button onclick="checkHealth()">🏥 检查健康状态</button>
+            <div id="result2"></div>
+        </div>
+
+        <!-- 测试3: 完整流程 -->
+        <div class="test-item">
+            <h3>测试 3: 完整流程（唤起 + 等待 + 检查）</h3>
+            <p>模拟 Web 前端的完整检测流程</p>
+            <button onclick="fullTest()">🔄 开始完整测试</button>
+            <button class="secondary" onclick="clearLog()">清空日志</button>
+            <div id="result3"></div>
+            <div id="log" class="log"></div>
+        </div>
+
+        <!-- 说明 -->
+        <div class="test-item" style="border-left-color: #FF9800;">
+            <h3>📝 说明</h3>
+            <ul>
+                <li><strong>如果协议已注册</strong>：点击"唤起 Agent"应该会启动程序（可能会弹出确认对话框）</li>
+                <li><strong>如果 Agent 正在运行</strong>：检查健康状态应该返回成功</li>
+                <li><strong>如果协议未注册</strong>：唤起时没有任何反应，需要重新安装 Agent</li>
+                <li><strong>完整测试</strong>：会尝试唤起 Agent，等待 5 秒后检查是否启动成功（带重试）</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let logEntries = [];
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString('zh-CN');
+            logEntries.push({ timestamp, message, type });
+            updateLog();
+        }
+
+        function updateLog() {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML = logEntries.map(entry => {
+                let color = '#90CAF9';
+                if (entry.type === 'success') color = '#81C784';
+                if (entry.type === 'error') color = '#E57373';
+                if (entry.type === 'warning') color = '#FFB74D';
+                return `<div><span class="timestamp">[${entry.timestamp}]</span> <span style="color: ${color}">${entry.message}</span></div>`;
+            }).join('');
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            logEntries = [];
+            updateLog();
+        }
+
+        function testProtocol() {
+            const result = document.getElementById('result1');
+            result.innerHTML = '<div class="status info">正在尝试唤起 Agent...</div>';
+
+            try {
+                // 尝试唤起协议
+                window.location.href = 'quant-agent://launch';
+
+                setTimeout(() => {
+                    result.innerHTML = '<div class="status success">✓ 协议调用成功！<br>如果 Agent 已安装，应该会启动程序。<br>（浏览器可能会弹出确认对话框）</div>';
+                }, 500);
+            } catch (error) {
+                result.innerHTML = `<div class="status error">✗ 协议调用失败: ${error.message}</div>`;
+            }
+        }
+
+        async function checkHealth() {
+            const result = document.getElementById('result2');
+            result.innerHTML = '<div class="status info">正在检查健康状态...</div>';
+
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3000);
+
+                const response = await fetch('http://127.0.0.1:17633/health', {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeout);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    result.innerHTML = `<div class="status success">✓ Agent 正在运行！<br>版本: ${data.version}<br>名称: ${data.name}</div>`;
+                } else {
+                    result.innerHTML = `<div class="status error">✗ Agent 响应异常<br>状态码: ${response.status}</div>`;
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    result.innerHTML = '<div class="status warning">⚠ 连接超时<br>Agent 可能未运行</div>';
+                } else {
+                    result.innerHTML = `<div class="status error">✗ 无法连接到 Agent<br>${error.message}<br><br>Agent 可能未运行或端口被占用</div>`;
+                }
+            }
+        }
+
+        async function fullTest() {
+            const result = document.getElementById('result3');
+            clearLog();
+
+            log('开始完整测试流程...', 'info');
+
+            // 步骤1: 检查当前状态
+            log('步骤 1/4: 检查 Agent 当前状态', 'info');
+            const initialStatus = await checkHealthQuiet();
+
+            if (initialStatus) {
+                log('✓ Agent 已经在运行，无需唤起', 'success');
+                result.innerHTML = '<div class="status success">✓ 测试通过：Agent 已在运行</div>';
+                return;
+            }
+
+            log('Agent 未运行，准备唤起...', 'warning');
+
+            // 步骤2: 尝试唤起
+            log('步骤 2/4: 通过协议唤起 Agent', 'info');
+            try {
+                window.location.href = 'quant-agent://launch';
+                log('✓ 协议调用成功', 'success');
+            } catch (error) {
+                log(`✗ 协议调用失败: ${error.message}`, 'error');
+                result.innerHTML = '<div class="status error">✗ 测试失败：协议调用失败</div>';
+                return;
+            }
+
+            // 步骤3: 等待启动
+            log('步骤 3/4: 等待 Agent 启动 (5秒)...', 'info');
+            result.innerHTML = '<div class="status info">等待 Agent 启动...</div>';
+            await sleep(5000);
+
+            // 步骤4: 重试检查（最多3次）
+            log('步骤 4/4: 检查 Agent 是否启动成功', 'info');
+            let success = false;
+            for (let i = 1; i <= 3; i++) {
+                log(`第 ${i}/3 次检查...`, 'info');
+                const isRunning = await checkHealthQuiet();
+
+                if (isRunning) {
+                    log('✓ Agent 启动成功！', 'success');
+                    result.innerHTML = '<div class="status success">✓ 测试通过：Agent 已成功启动</div>';
+                    success = true;
+                    break;
+                }
+
+                if (i < 3) {
+                    log('Agent 尚未就绪，等待 2 秒后重试...', 'warning');
+                    await sleep(2000);
+                }
+            }
+
+            if (!success) {
+                log('✗ Agent 未能启动，可能未安装或安装不正确', 'error');
+                result.innerHTML = '<div class="status error">✗ 测试失败：Agent 未能启动<br><br>可能原因：<br>1. Agent 未安装<br>2. 协议注册失败<br>3. Agent 启动时间过长<br>4. 端口 17633 被占用</div>';
+            }
+        }
+
+        async function checkHealthQuiet() {
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3000);
+
+                const response = await fetch('http://127.0.0.1:17633/health', {
+                    method: 'GET',
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeout);
+                return response.ok;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>

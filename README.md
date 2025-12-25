@@ -12,8 +12,13 @@ quant-agent 是一个在本地运行的量化交易执行和回测系统。Web �
 
 ## 快速开始
 
-### 1. 依赖安装
-
+### 1. 激活 Conda 环境
+如果还没有创建新的 Conda 环境，可以执行以下命令创建一个新的 Conda 环境，并激活它：
+```bash
+conda create --name quant-agent-env python=3.10
+conda activate quant-agent-env
+```
+### 2. 安装以来
 ```bash
 cd quant-agent
 pip install -e .
@@ -25,7 +30,7 @@ pip install -e .
 pip install -e ".[dev]"
 ```
 
-### 2. 启动服务
+### 3. 启动服务
 
 **方式一：使用开发脚本（推荐）**
 
@@ -51,7 +56,7 @@ uvicorn agent.main:app --host 127.0.0.1 --port 17633
 python -m agent.main
 ```
 
-### 3. 验证运行
+### 4. 验证运行
 
 服务启动后，访问以下地址验证：
 
@@ -424,6 +429,7 @@ dist/quant-agent.exe
 下载并安装 [Inno Setup](https://jrsoftware.org/isdl.php)
 
 创建安装脚本 `installer/setup.iss`:
+如果报错缺失ChineseSimplified.isl，可以在`installer/ChineseSimplified.isl` 找到
 
 ```iss
 ; Inno Setup 安装脚本

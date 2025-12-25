@@ -2,7 +2,7 @@
 打包 quant-agent 为独立可执行文件
 
 运行方式: python build.py
-输出: dist/quant-agent.exe (完全独立，不依赖任何外部 Python 环境)
+输出: dist/installer/quant-agent.exe (完全独立，不依赖任何外部 Python 环境)
 
 环境隔离说明:
 - 打包后的 .exe 包含完整的 Python 解释器
@@ -31,22 +31,29 @@ def main():
 
     print()
     print("[2/4] 准备打包...")
-    print("  - 入口文件: agent/main.py")
-    print("  - 打包模式: 单文件 (--onefile)")
-    print("  - 控制台: 启用 (方便查看日志)")
-    print()
 
     # 打包参数
     print("[3/4] 开始打包...")
     PyInstaller.__main__.run([
-        'agent/main.py',                    # 入口文件
+        'agent/main.py',  # 入口文件
 
         # 基本设置
-        '--name=quant-agent',               # 可执行文件名
-        '--onefile',                        # 打包成单个文件（所有依赖都在里面）
-        '--console',                        # 显示控制台（方便看日志）
+        '--name=quant-agent',  # 可执行文件名
+        '--onefile',  # 打包成单个文件（所有依赖都在里面）
+        '--console',  # 显示控制台（方便看日志）
+
+        # 包含整个 agent 包及其子模块
+        '--hidden-import=agent',
+        '--hidden-import=agent.main',
+        '--hidden-import=agent.api',
+        '--hidden-import=agent.api.health',
+        '--hidden-import=agent.core',
+        '--hidden-import=agent.core.config',
+        '--hidden-import=agent.utils',
+        '--hidden-import=agent.utils.logger',
 
         # 包含 uvicorn 的隐藏导入
+        '--hidden-import=uvicorn',
         '--hidden-import=uvicorn.logging',
         '--hidden-import=uvicorn.loops',
         '--hidden-import=uvicorn.loops.auto',
@@ -56,8 +63,21 @@ def main():
         '--hidden-import=uvicorn.protocols.http.h11_impl',
         '--hidden-import=uvicorn.protocols.websockets',
         '--hidden-import=uvicorn.protocols.websockets.auto',
+        '--hidden-import=uvicorn.protocols.websockets.wsproto',
+        '--hidden-import=uvicorn.protocols.websockets.wsproto_impl',
         '--hidden-import=uvicorn.lifespan',
         '--hidden-import=uvicorn.lifespan.on',
+
+        # 包含 FastAPI 和 Pydantic 的隐藏导入
+        '--hidden-import=fastapi',
+        '--hidden-import=pydantic',
+        '--hidden-import=pydantic_settings',
+        '--hidden-import=starlette',
+        '--hidden-import=starlette.responses',
+        '--hidden-import=starlette.routing',
+
+        # 收集所有 uvicorn 相关文件
+        '--collect-all=uvicorn',
 
         # 图标（可选，未来添加）
         # '--icon=installer/icon.ico',
@@ -67,6 +87,9 @@ def main():
 
         # 不显示确认对话框
         '--noconfirm',
+
+        # 指定输出目录
+        '--distpath', 'dist/installer',  # 输出到 dist/installer 文件夹
     ])
 
     print()
@@ -76,7 +99,7 @@ def main():
     print("打包结果")
     print("=" * 70)
 
-    exe_path = os.path.join('dist', 'quant-agent.exe')
+    exe_path = os.path.join('dist', 'installer', 'quant-agent.exe')
     if os.path.exists(exe_path):
         size_mb = os.path.getsize(exe_path) / (1024 * 1024)
         print(f"生成的可执行文件: {exe_path}")

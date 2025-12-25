@@ -79,8 +79,10 @@ def main():
     - QUANT_AGENT_LOG_LEVEL
     """
     try:
+        # 直接传递 app 对象而不是字符串路径
+        # 这样在 PyInstaller 打包后也能正常工作
         uvicorn.run(
-            "agent.main:app",
+            app,  # 直接使用 app 对象，而不是 "agent.main:app" 字符串
             host=settings.host,
             port=settings.port,
             log_level=settings.log_level.lower(),

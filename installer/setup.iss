@@ -47,7 +47,7 @@ Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.i
 [Files]
 ; 复制独立的可执行文件到安装目录
 ; 这个 .exe 包含了 Python 解释器和所有依赖，完全独立
-Source: "dist\quant-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\dist\installer\quant-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; 开始菜单快捷方式
@@ -75,8 +75,6 @@ Filename: "{app}\quant-agent.exe"; Description: "立即启动 Quant Agent"; Flag
 [Code]
 // 检查是否已有实例在运行
 function InitializeSetup(): Boolean;
-var
-  ResultCode: Integer;
 begin
   Result := True;
 
@@ -86,8 +84,6 @@ end;
 
 // 卸载前的清理
 function InitializeUninstall(): Boolean;
-var
-  ResultCode: Integer;
 begin
   Result := True;
 
