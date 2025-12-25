@@ -56,9 +56,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        # TODO: 根据实际 Web 前端端口配置
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:5173",  # Vite 默认端口
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:5173",
+        # 可以根据实际 Web 前端端口添加更多
     ],
     allow_credentials=True,
     allow_methods=["*"],
