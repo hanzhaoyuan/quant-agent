@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 服务标识符 -->
+    <key>Label</key>
+    <string>com.fastbull.quantagent</string>
+
+    <!-- 可执行文件路径（会在安装时替换） -->
+    <key>Program</key>
+    <string>/Applications/quant-agent.app/Contents/MacOS/quant-agent</string>
+
+    <!-- 或使用数组形式传递参数 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/quant-agent.app/Contents/MacOS/quant-agent</string>
+    </array>
+
+    <!-- 开机自动启动 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 保持运行（崩溃后自动重启） -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- 标准输出日志 -->
+    <key>StandardOutPath</key>
+    <string>/tmp/com.fastbull.quantagent.out.log</string>
+
+    <!-- 标准错误日志 -->
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.fastbull.quantagent.err.log</string>
+
+    <!-- 工作目录 -->
+    <key>WorkingDirectory</key>
+    <string>/tmp</string>
+
+    <!-- 环境变量（可选） -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <!-- 启动延迟（秒，可选） -->
+    <key>StartInterval</key>
+    <integer>0</integer>
+
+    <!-- 崩溃重启的节流设置 -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- 退出超时（秒） -->
+    <key>ExitTimeOut</key>
+    <integer>5</integer>
+
+    <!-- 后台运行（不在 Dock 显示） -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <!-- 会话类型 -->
+    <key>SessionCreate</key>
+    <false/>
+</dict>
+</plist>
