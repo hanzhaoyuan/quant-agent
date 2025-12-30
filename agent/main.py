@@ -52,18 +52,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS 配置（仅允许本地前端访问）
+# CORS 配置（允许所有来源访问）
+# 由于这是用户本地运行的 Agent，安全性由用户自己控制
+# 允许从任何域名（包括云端部署的前端）访问本地 Agent
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:5173",  # Vite 默认端口
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:5173",
-        # 可以根据实际 Web 前端端口添加更多
-    ],
+    allow_origins=["*"],  # 允许所有来源
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

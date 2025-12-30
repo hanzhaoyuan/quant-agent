@@ -53,6 +53,7 @@ curl http://127.0.0.1:17633/health
 在 `quant-agent-mac.spec` 中：
 
 ```python
+
 'CFBundleURLTypes': [
     {
         'CFBundleURLName': 'Quant Agent Protocol',
