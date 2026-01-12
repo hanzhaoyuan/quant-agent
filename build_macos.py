@@ -16,6 +16,7 @@ import os
 import shutil
 import sys
 import plistlib
+import platform
 from pathlib import Path
 
 
@@ -70,6 +71,19 @@ def main():
     print("=" * 70)
     print()
 
+    # 检测系统架构
+    machine = platform.machine().lower()
+    is_apple_silicon = machine in ['arm64', 'aarch64']
+
+    print(f"系统架构: {machine}")
+    if is_apple_silicon:
+        print("检测到 Apple Silicon (M1/M2/M3)")
+        target_arch = 'arm64'
+    else:
+        print("检测到 Intel Mac (x86_64)")
+        target_arch = 'x86_64'
+    print()
+
     # 检查操作系统
     if sys.platform != "darwin":
         print("⚠️  警告: 此脚本应在 macOS 上运行")
@@ -89,10 +103,13 @@ def main():
 
     print()
     print("[2/5] 准备打包...")
+    print(f"目标架构: {target_arch}")
 
     # 打包参数
+    print()
     print("[3/5] 开始打包...")
-    PyInstaller.__main__.run([
+
+    pyinstaller_args = [
         'agent/main.py',  # 入口文件
 
         # 基本设置
@@ -137,8 +154,25 @@ def main():
         # 收集所有 uvicorn 相关文件
         '--collect-all=uvicorn',
 
+        # 排除不必要的模块以加快启动速度
+        '--exclude-module=matplotlib',
+        '--exclude-module=numpy',
+        '--exclude-module=pandas',
+        '--exclude-module=PIL',
+        '--exclude-module=tkinter',
+        '--exclude-module=PyQt5',
+        '--exclude-module=scipy',
+        '--exclude-module=IPython',
+        '--exclude-module=jupyter',
+        '--exclude-module=notebook',
+        '--exclude-module=pytest',
+        '--exclude-module=setuptools._distutils',
+
         # macOS 特定设置
         '--osx-bundle-identifier=com.fastbull.quantagent',
+
+        # 目标架构（关键！）
+        '--target-architecture', target_arch,
 
         # 图标（可选，需要 .icns 格式）
         # '--icon=installer/icon.icns',
@@ -151,7 +185,9 @@ def main():
 
         # 指定输出目录
         '--distpath', 'dist',
-    ])
+    ]
+
+    PyInstaller.__main__.run(pyinstaller_args)
 
     print()
     print("[4/5] 配置 .app bundle...")
@@ -178,6 +214,7 @@ def main():
         print("=" * 70)
         print(f"生成的应用: {app_path}")
         print(f"应用大小: {size_mb:.1f} MB")
+        print(f"目标架构: {target_arch}")
         print()
         print("=" * 70)
         print("重要提示 - 环境隔离说明")
@@ -187,6 +224,10 @@ def main():
         print("✅ 用户无需安装任何依赖库 (pip install)")
         print("✅ 完全不会污染用户系统环境")
         print("✅ 可以在 macOS 10.13+ 上运行")
+        if is_apple_silicon:
+            print("✅ 支持 Apple Silicon (M1/M2/M3) Mac")
+        else:
+            print("✅ 支持 Intel (x86_64) Mac")
         print("✅ 已注册 quant-agent:// URL 协议")
         print()
         print("=" * 70)

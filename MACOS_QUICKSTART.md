@@ -4,25 +4,79 @@
 
 ---
 
-## ⚡ 5 分钟快速部署
+## 📋 前置条件
+
+### 1. 安装 Xcode Command Line Tools（必须！）
+
+```bash
+# 安装 Command Line Tools
+xcode-select --install
+```
+
+会弹出安装对话框，点击"安装"并等待完成（约 5-10 分钟）。
+
+**验证安装**：
+```bash
+# 检查路径
+xcode-select -p
+# 应输出: /Library/Developer/CommandLineTools
+
+# 检查工具
+which lipo
+# 应输出: /usr/bin/lipo
+
+xcrun --version
+# 应输出版本号
+```
+
+**如果安装失败**，参考 [MACOS_TROUBLESHOOTING.md](MACOS_TROUBLESHOOTING.md)。
+
+---
+
+### 2. 准备 Python 环境
+
+```bash
+cd quant-agent
+
+# 创建 conda 环境（如果还没有）
+conda create -n quant-agent-env python=3.10 -y
+
+# 激活环境
+conda activate quant-agent-env
+
+# 安装依赖
+pip install -r requirements.txt
+pip install pyinstaller
+```
+
+**重要**：确保终端提示符显示 `(quant-agent-env)`，而不是 `(base)`！
+
+---
+
+## ⚡ 快速部署
 
 ### 在 macOS 上运行：
 
 ```bash
-# 1. 构建 .app 和 .dmg
+# 0. 确保在正确的环境（重要！）
+conda activate quant-agent-env
+
+# 1. 构建 .app
 cd quant-agent
 python build_macos.py
+
+# 2. 创建 .dmg 安装包
 chmod +x create_dmg.sh
 ./create_dmg.sh
 
-# 2. 复制到前端
+# 3. 复制到前端
 cp installer/output/QuantAgent-0.1.0.dmg ../fastbull-demo/public/downloads/
 
-# 3. 重新构建前端
+# 4. 重新构建前端
 cd ../fastbull-demo
 npm run build
 
-# 4. 部署 dist 目录
+# 5. 部署 dist 目录
 # ... 上传到服务器 ...
 
 # 完成！
@@ -65,18 +119,40 @@ npm run build
 ### 本地测试
 
 ```bash
-# 1. 打开 .app
+cd quant-agent
+
+# 1. 验证架构
+file dist/quant-agent.app/Contents/MacOS/quant-agent
+# Intel Mac 应输出: Mach-O 64-bit executable x86_64
+# Apple Silicon 应输出: Mach-O 64-bit executable arm64
+
+# 2. 查看应用大小
+du -sh dist/quant-agent.app
+
+# 3. 双击启动应用（推荐）
+# 在 Finder 中双击 dist/quant-agent.app
+
+# 或使用命令行启动
 open dist/quant-agent.app
 
-# 2. 验证服务
-curl http://127.0.0.1:17633/health
+# 4. 等待服务启动
+sleep 5
 
-# 3. 测试 URL 协议
+# 5. 验证服务
+curl http://127.0.0.1:17633/health
+# 应返回: {"ok":true,"name":"quant-agent","version":"0.1.0"}
+
+# 6. 测试 URL 协议
 open quant-agent://launch
 
-# 4. 测试 DMG
+# 7. 测试 DMG 安装
 open installer/output/QuantAgent-0.1.0.dmg
-# 拖拽到"应用程序"
+# 拖拽到"应用程序"文件夹
+
+# 8. 从应用程序启动
+open /Applications/quant-agent.app
+sleep 5
+curl http://127.0.0.1:17633/health
 ```
 
 ### 前端集成测试
@@ -100,7 +176,35 @@ npm run dev
 ### macOS 版本要求
 - **最低版本**：macOS 10.13 (High Sierra)
 - **推荐版本**：macOS 11.0+ (Big Sur)
-- **架构**：x86_64 (Intel) 和 arm64 (Apple Silicon) 通用
+
+### 架构支持（自动检测）
+
+**构建脚本会自动检测系统架构**：
+
+#### Intel Mac
+```
+系统架构: x86_64
+检测到 Intel Mac (x86_64)
+目标架构: x86_64
+```
+- ✅ 生成 x86_64 二进制
+- ✅ 在 Intel Mac 上原生运行
+- ✅ 在 Apple Silicon Mac 上通过 Rosetta 2 运行
+
+#### Apple Silicon Mac
+```
+系统架构: arm64
+检测到 Apple Silicon (M1/M2/M3)
+目标架构: arm64
+```
+- ✅ 生成 arm64 二进制
+- ✅ 在 Apple Silicon Mac 上原生运行
+- ❌ 无法在 Intel Mac 上运行
+
+**建议**：
+- **如果只有 Intel Mac**：构建 x86_64 版本（兼容性更好）
+- **如果只有 Apple Silicon**：构建 arm64 版本（性能更好）
+- **如果需要通用版本**：使用 `lipo` 合并两种架构（参考 MACOS_TROUBLESHOOTING.md）
 
 ### 浏览器支持
 - Safari 13+
@@ -142,7 +246,73 @@ VERSION="0.2.0"  # 修改这里
 
 ## ⚠️ 注意事项
 
-### 1. macOS Gatekeeper
+### 1. 必须在正确的 conda 环境中
+
+**症状**：`ModuleNotFoundError: No module named 'PyInstaller'`
+
+**原因**：在 `(base)` 环境而不是 `(quant-agent-env)` 环境中运行
+
+**解决**：
+```bash
+# 检查当前环境（提示符应显示环境名）
+# 错误: (base) steven@...
+# 正确: (quant-agent-env) steven@...
+
+# 切换环境
+conda activate quant-agent-env
+
+# 验证
+which python
+pip show pyinstaller
+```
+
+---
+
+### 2. 必须安装 Xcode Command Line Tools
+
+**症状**：
+```
+xcrun: error: invalid active developer path
+lipo command failed with error code 1
+```
+
+**解决**：
+```bash
+# 重新安装
+sudo rm -rf /Library/Developer/CommandLineTools
+xcode-select --install
+
+# 验证
+xcode-select -p
+which lipo
+xcrun --version
+```
+
+详细故障排除见 [MACOS_TROUBLESHOOTING.md](MACOS_TROUBLESHOOTING.md#问题-0缺少-xcode-command-line-tools最常见)
+
+---
+
+### 3. 清理缓存后重新构建
+
+**如果构建失败或出现奇怪错误**：
+
+```bash
+cd quant-agent
+
+# 彻底清理
+rm -rf build dist *.spec
+
+# 清理 Python 缓存
+find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null
+find . -type f -name "*.pyc" -delete
+
+# 重新构建
+python build_macos.py
+```
+
+---
+
+### 4. macOS Gatekeeper
 
 用户首次打开时可能看到："无法打开，因为来自身份不明的开发者"
 
@@ -233,15 +403,26 @@ jobs:
 
 ## ✅ 检查清单
 
-在部署前确保：
+### 构建前检查
 
-- [ ] 在 macOS 上运行 `python build_macos.py`
+- [ ] 已安装 Xcode Command Line Tools（`xcode-select -p` 正常）
+- [ ] 已激活 conda 环境（提示符显示 `(quant-agent-env)`）
+- [ ] 已安装 PyInstaller（`pip show pyinstaller` 正常）
+- [ ] 在正确的目录（`pwd` 显示 `.../quant-agent`）
+
+### 构建后检查
+
 - [ ] `dist/quant-agent.app` 已生成
-- [ ] 本地测试 .app 可以启动
-- [ ] 运行 `./create_dmg.sh`
+- [ ] 架构正确（`file dist/quant-agent.app/Contents/MacOS/quant-agent`）
+- [ ] 应用可以启动（双击或 `open dist/quant-agent.app`）
+- [ ] 服务正常响应（`curl http://127.0.0.1:17633/health`）
+
+### DMG 和部署检查
+
+- [ ] `create_dmg.sh` 有执行权限（`chmod +x create_dmg.sh`）
 - [ ] `installer/output/QuantAgent-0.1.0.dmg` 已生成
 - [ ] DMG 已复制到 `fastbull-demo/public/downloads/`
-- [ ] 前端已重新构建
+- [ ] 前端已重新构建（`npm run build`）
 - [ ] `dist/downloads/QuantAgent-0.1.0.dmg` 存在
 - [ ] 已部署到服务器
 - [ ] 用户可以成功下载和安装
